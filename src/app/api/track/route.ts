@@ -26,8 +26,21 @@ export async function POST(request: NextRequest) {
   try {
     const ip = extractClientIp(request);
     const userAgent = request.headers.get('user-agent') || 'Unknown';
-    const referer = request.headers.get('referer') || 'Direct';
-    const timestamp = new Date().toISOString();
+
+    // Format thời gian theo UTC+7 dạng dd/mm/yyyy HH:mm:ss UTC+7
+    const now = new Date();
+    const fmt = new Intl.DateTimeFormat('vi-VN', {
+      timeZone: 'Asia/Bangkok',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    }).formatToParts(now);
+    const get = (type: string) => fmt.find(p => p.type === type)?.value || '';
+    const formattedTime = `${get('day')}/${get('month')}/${get('year')} ${get('hour')}:${get('minute')}:${get('second')} UTC+7`;
 
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     const chatId = process.env.TELEGRAM_CHAT_ID;
@@ -36,16 +49,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Telegram configuration missing' }, { status: 500 });
     }
 
-    const origin = request.headers.get('x-forwarded-host')
-      ? `${request.headers.get('x-forwarded-proto') || 'https'}://${request.headers.get('x-forwarded-host')}`
-      : request.headers.get('origin') || 'Unknown';
-
     const message = `🔍 **IP Tracker Alert**\n\n` +
       `📍 **IP Address:** \`${ip}\`\n` +
-      `🕐 **Time:** ${timestamp}\n` +
-      `🌐 **Referer:** ${referer}\n` +
-      `📱 **User Agent:** ${userAgent}\n` +
-      `🔗 **URL:** ${origin}`;
+      `🕐 **Time:** ${formattedTime}\n` +
+      `📱 **User Agent:** ${userAgent}`;
 
     const telegramResponse = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: 'POST',
