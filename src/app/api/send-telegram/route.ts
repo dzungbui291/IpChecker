@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const { ip, userAgent, referer, timestamp } = await request.json();
+    const { ip, userAgent, timestamp } = await request.json();
 
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     const chatId = process.env.TELEGRAM_CHAT_ID;
@@ -14,13 +14,50 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Tạo message với thông tin IP
+    // Định dạng thời gian về dd/mm/yyyy hh:mm:ss UTC+7
+    const toUtc7String = (isoString: string) => {
+      const date = new Date(isoString);
+      // Chuyển sang UTC+7: cộng 7 giờ theo milliseconds
+      const utc7 = new Date(date.getTime() + 7 * 60 * 60 * 1000);
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      const dd = pad(utc7.getUTCDate());
+      const mm = pad(utc7.getUTCMonth() + 1);
+      const yyyy = utc7.getUTCFullYear();
+      const hh = pad(utc7.getUTCHours());
+      const min = pad(utc7.getUTCMinutes());
+      const ss = pad(utc7.getUTCSeconds());
+      return `${dd}/${mm}/${yyyy} ${hh}:${min}:${ss} UTC+7`;
+    };
+
+    const formattedTime = toUtc7String(timestamp);
+
+    // Tra cứu quốc gia từ IP (sử dụng ipwho.is - không cần API key)
+    let countryText = '';
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 2500);
+      const geoRes = await fetch(`https://ipwho.is/${encodeURIComponent(ip)}`, {
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      if (geoRes.ok) {
+        const geo = await geoRes.json();
+        if (geo && geo.success) {
+          const country = geo.country || '';
+          const code = geo.country_code || '';
+          countryText = country ? `${country}${code ? ` (${code})` : ''}` : '';
+        }
+      }
+    } catch (_) {
+      // Bỏ qua nếu tra cứu thất bại
+    }
+
+    // Tạo message với thông tin IP (bỏ Referer và URL)
     const message = `🔍 **IP Tracker Alert**\n\n` +
       `📍 **IP Address:** \`${ip}\`\n` +
-      `🕐 **Time:** ${timestamp}\n` +
-      `🌐 **Referer:** ${referer}\n` +
-      `📱 **User Agent:** ${userAgent}\n` +
-      `🔗 **URL:** ${request.headers.get('origin') || 'Unknown'}`;
+      (countryText ? `🌎 **Country:** ${countryText}\n` : '') +
+      `🕐 **Time:** ${formattedTime}\n` +
+      `📱 **User Agent:** ${userAgent}`;
 
     // Gửi message đến Telegram
     const telegramResponse = await fetch(
