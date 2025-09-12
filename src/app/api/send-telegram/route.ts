@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
 
     // Tra cứu quốc gia từ IP (sử dụng ipwho.is - không cần API key)
     let countryText = '';
+    let ispText = '';
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 2500);
@@ -46,6 +47,16 @@ export async function POST(request: NextRequest) {
           const country = geo.country || '';
           const code = geo.country_code || '';
           countryText = country ? `${country}${code ? ` (${code})` : ''}` : '';
+
+          const connection = geo.connection || {};
+          const isp = connection.isp || '';
+          const org = connection.org || geo.org || '';
+          const asn = connection.asn || '';
+          const parts: string[] = [];
+          if (isp) parts.push(isp);
+          if (org && org !== isp) parts.push(org);
+          if (asn) parts.push(`AS${asn}`);
+          ispText = parts.join(' / ');
         }
       }
     } catch (_) {
@@ -56,6 +67,7 @@ export async function POST(request: NextRequest) {
     const message = `🔍 **IP Tracker Alert**\n\n` +
       `📍 **IP Address:** \`${ip}\`\n` +
       (countryText ? `🌎 **Country:** ${countryText}\n` : '') +
+      (ispText ? `🏷 **ISP:** ${ispText}\n` : '') +
       `🕐 **Time:** ${formattedTime}\n` +
       `📱 **User Agent:** ${userAgent}`;
 
