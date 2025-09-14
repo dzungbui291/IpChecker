@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
 
     if (!botToken || !chatId) {
       return NextResponse.json(
-        { error: 'Telegram configuration missing' },
+        { error: "Telegram configuration missing" },
         { status: 500 }
       );
     }
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       const date = new Date(isoString);
       // Chuyển sang UTC+7: cộng 7 giờ theo milliseconds
       const utc7 = new Date(date.getTime() + 7 * 60 * 60 * 1000);
-      const pad = (n: number) => n.toString().padStart(2, '0');
+      const pad = (n: number) => n.toString().padStart(2, "0");
       const dd = pad(utc7.getUTCDate());
       const mm = pad(utc7.getUTCMonth() + 1);
       const yyyy = utc7.getUTCFullYear();
@@ -32,8 +32,8 @@ export async function POST(request: NextRequest) {
     const formattedTime = toUtc7String(timestamp);
 
     // Tra cứu quốc gia từ IP (sử dụng ipwho.is - không cần API key)
-    let countryText = '';
-    let ispText = '';
+    let countryText = "";
+    let ispText = "";
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 2500);
@@ -44,19 +44,19 @@ export async function POST(request: NextRequest) {
       if (geoRes.ok) {
         const geo = await geoRes.json();
         if (geo && geo.success) {
-          const country = geo.country || '';
-          const code = geo.country_code || '';
-          countryText = country ? `${country}${code ? ` (${code})` : ''}` : '';
+          const country = geo.country || "";
+          const code = geo.country_code || "";
+          countryText = country ? `${country}${code ? ` (${code})` : ""}` : "";
 
           const connection = geo.connection || {};
-          const isp = connection.isp || '';
-          const org = connection.org || geo.org || '';
-          const asn = connection.asn || '';
+          const isp = connection.isp || "";
+          const org = connection.org || geo.org || "";
+          const asn = connection.asn || "";
           const parts: string[] = [];
           if (isp) parts.push(isp);
           if (org && org !== isp) parts.push(org);
           if (asn) parts.push(`AS${asn}`);
-          ispText = parts.join(' / ');
+          ispText = parts.join(" / ");
         }
       }
     } catch (_) {
@@ -64,10 +64,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Tạo message với thông tin IP (bỏ Referer và URL)
-    const message = `🔍 **IP Tracker Alert**\n\n` +
+    const message =
+      `🔍 **IP Tracker Alert**\n\n` +
       `📍 **IP Address:** \`${ip}\`\n` +
-      (countryText ? `🌎 **Country:** ${countryText}\n` : '') +
-      (ispText ? `🏷 **ISP:** ${ispText}\n` : '') +
+      (countryText ? `🌎 **Country:** ${countryText}\n` : "") +
+      (ispText ? `🏷 **ISP:** ${ispText}\n` : "") +
       `🕐 **Time:** ${formattedTime}\n` +
       `📱 **User Agent:** ${userAgent}`;
 
@@ -75,32 +76,32 @@ export async function POST(request: NextRequest) {
     const telegramResponse = await fetch(
       `https://api.telegram.org/bot${botToken}/sendMessage`,
       {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           chat_id: chatId,
           text: message,
-          parse_mode: 'Markdown',
+          // parse_mode: 'Markdown',
         }),
       }
     );
 
     if (!telegramResponse.ok) {
       const errorData = await telegramResponse.json();
-      console.error('Telegram API error:', errorData);
+      console.error("Telegram API error:", errorData);
       return NextResponse.json(
-        { error: 'Failed to send to Telegram' },
+        { error: "Failed to send to Telegram" },
         { status: 500 }
       );
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error sending to Telegram:', error);
+    console.error("Error sending to Telegram:", error);
     return NextResponse.json(
-      { error: 'Failed to send to Telegram' },
+      { error: "Failed to send to Telegram" },
       { status: 500 }
     );
   }
